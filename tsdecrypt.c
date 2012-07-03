@@ -69,7 +69,7 @@ static void LOG_func(const char *msg) {
 		LOG(msg);
 }
 
-static const char short_options[] = "i:d:N:Sl:L:F:I:RzM:T:W:O:o:t:rk:g:upwxyc:C:Y:Q:A:s:U:P:B:eZ:Ef:X:H:G:KJ:D:jbhV";
+static const char short_options[] = "i:d:N:Sl:L:F:I:RzM:T:W:O:o:t:rk:g:upwxyc:C:Y:Q:A:s:U:P:B:eZ:Ef:X:H:G:KJ:D:jbhVa:";
 
 // Unused short options: amnqv0123456789
 static const struct option long_options[] = {
@@ -127,6 +127,8 @@ static const struct option long_options[] = {
 	{ "bench",				no_argument,       NULL, 'b' },
 	{ "help",				no_argument,       NULL, 'h' },
 	{ "version",			no_argument,       NULL, 'V' },
+
+	{ "emm-buffer-mask",		required_argument, NULL, 'a' },
 
 	{ 0, 0, 0, 0 }
 };
@@ -197,6 +199,7 @@ static void show_help(struct ts *ts) {
 	printf(" -f --emm-report-time <sec> | Report each <sec> seconds how much EMMs have been\n");
 	printf("                            .   received/processed. Set <sec> to 0 to disable\n");
 	printf("                            .   the reports. Default: %d sec\n", ts->emm_report_interval);
+	printf(" -a --emm-buffer-mask x,y,z | Enabled emm buffer filtering\n");
 	printf("\n");
 	printf("ECM options:\n");
 	printf(" -X --ecm-pid <pid>         | Force ECM pid. Default: none\n");
@@ -253,7 +256,7 @@ static int parse_io_param(struct io *io, char *opt, int open_flags, mode_t open_
 }
 
 static void parse_options(struct ts *ts, int argc, char **argv) {
-	int j, i, ca_err = 0, server_err = 1, input_addr_err = 0, output_addr_err = 0, output_intf_err = 0, ident_err = 0, port_set = 0;
+	int k, j, i, ca_err = 0, server_err = 1, input_addr_err = 0, output_addr_err = 0, output_intf_err = 0, ident_err = 0, port_set = 0;
 	while ((j = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
 		char *p = NULL;
 		switch (j) {
@@ -507,6 +510,41 @@ static void parse_options(struct ts *ts, int argc, char **argv) {
 			case 'V': // --version
 				printf("%s\n", program_id);
 				exit(EXIT_SUCCESS);
+
+			case 'a': // EMM Filtering
+				j = 0;
+				i = sscanf( optarg, "%d", &ts->emm_filter_offset);
+				if( i==1 && ts->emm_filter_offset) {
+				    char *q = optarg;
+					//printf("%s %d %d\n", optarg, i, ts->emm_filter_offset);
+				    while( (q=strchr( q, ','))) {
+					q++;
+				        ts->emm_filter = realloc( ts->emm_filter, (j+1)*sizeof( char *));
+					//printf("%d %s\n", j, q);
+					ts->emm_filter[j] = malloc( strlen(q)/2);
+					k = 0;
+					while( *q && *q!=',') {
+					    int z;
+
+					    i = sscanf( q, "%02x", &z);
+					    if( i==1) {
+					        ts->emm_filter[j][k++] = z;
+					    }
+					    q+=2;
+					}
+					if( ts->emm_filter_bytes && ts->emm_filter_bytes!=k) {
+					    printf( "EMM Filtering erorr: filter lengths not the same\n");
+					    exit(!EXIT_SUCCESS);
+                    }
+					ts->emm_filter_bytes = k;
+				    //printf( "EMM Filtering on : %d block, %d bytes\n", j+1, k);
+					j++;
+				    }
+				    ts->emm_filter_blocks = j;
+				    printf( "EMM Filtering on : %d blocks, %d bytes, offset %d\n", ts->emm_filter_blocks,
+					ts->emm_filter_bytes, ts->emm_filter_offset);
+				}
+				break;
 		}
 	}
 	if (!ts->ident) {

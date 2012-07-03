@@ -110,6 +110,8 @@ void data_init(struct ts *ts) {
 }
 
 void data_free(struct ts *ts) {
+  int i;
+
 	ts_pat_free(&ts->pat);
 	ts_pat_free(&ts->curpat);
 	ts_pat_free(&ts->genpat);
@@ -141,6 +143,13 @@ void data_free(struct ts *ts) {
 	// and in order to avoid leaking 43 bytes of memory on exit which makes valgrind
 	// unhappy it is a good idea to free the memory (ONCE!).
 	FREE(ts->camd.newcamd.crypt_passwd);
+
+        if( ts->emm_filter)
+            for( i=0; i<ts->emm_filter_blocks; i++)
+               free( ts->emm_filter[i]);
+	ts->emm_filter_offset = 0;
+	ts->emm_filter_bytes = 0;
+	ts->emm_filter_blocks = 0;
 
 	pthread_attr_destroy(&ts->thread_attr);
 }

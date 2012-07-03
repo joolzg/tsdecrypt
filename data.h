@@ -292,6 +292,11 @@ struct ts {
 
 	unsigned int		input_buffer_time;
 	LIST				*input_buffer;
+
+	int				emm_filter_offset;
+	int				emm_filter_bytes;
+	int				emm_filter_blocks;
+	unsigned char			**emm_filter;
 };
 
 void data_init(struct ts *ts);
