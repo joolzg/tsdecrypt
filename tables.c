@@ -19,6 +19,8 @@
 #include "tables.h"
 #include "camd.h"
 
+#include <string.h>
+
 #include "libtsfuncs/tsfuncs.h"
 #include "libfuncs/libfuncs.h"
 
@@ -259,6 +261,7 @@ void process_sdt(struct ts *ts, uint16_t pid, uint8_t *ts_packet) {
 
 static void __process_emm(struct ts *ts, uint16_t pid, uint8_t *ts_packet) {
 	char dump[dump_buf_sz];
+        int match;
 
 	show_ts_pack(ts, pid, "emm", NULL, ts_packet);
 
@@ -271,17 +274,39 @@ static void __process_emm(struct ts *ts, uint16_t pid, uint8_t *ts_packet) {
 
 	struct ts_header *th = &ts->emm->ts_header;
 	struct ts_section_header *sec = ts->emm->section_header;
-	if (ts->debug_level >= 2) {
+
+        // If we are not using filtering, we always send packets
+	match = 0;
+        if( ts->emm_filter) {
+            // Dont send packets unless we have found a filter match
+	    match = -1;
+            if( ts->emm_filter_bytes+ts->emm_filter_offset<sec->section_data_len) {
+            int i;
+
+//		ts_LOGf("EMM | %d\n", ts->emm_filter_bytes);
+                for( i=0; i<ts->emm_filter_blocks; i++) {
+//		ts_LOGf("EMM | %d %02x-%02x %02x-%02x\n", i, sec->section_data[ ts->emm_filter_offset], ts->emm_filter[i][0],
+//			sec->section_data[ ts->emm_filter_offset+1], ts->emm_filter[i][1] );
+                    if( !memcmp( sec->section_data+ts->emm_filter_offset, ts->emm_filter[i], ts->emm_filter_bytes)) {
+                        match = i+1;
+                    }
+                }
+            }
+        }
+	if (ts->debug_level >= 2 || match>0) {
 		ts_hex_dump_buf(dump, dump_buf_sz, sec->section_data, min(dump_sz, sec->section_data_len), 0);
-		ts_LOGf("EMM | SID 0x%04x CAID: 0x%04x PID 0x%04x Table: 0x%02x Length: %4d Data: %s..\n",
+		ts_LOGf("EMM | SID 0x%04x CAID: 0x%04x PID 0x%04x Table: 0x%02x Match: %s Length: %4d Data: %s..\n",
 			ts->service_id,
 			ts->emm_caid,
 			th->pid,
 			sec->table_id,
+                        match!=-1 ? "Yes":"No ",
 			sec->section_data_len,
 			dump);
 	}
-	camd_process_packet(ts, camd_msg_alloc(EMM_MSG, ts->emm_caid, ts->service_id, sec->section_data, sec->section_data_len));
+        if( match!=-1) {
+	    camd_process_packet(ts, camd_msg_alloc(EMM_MSG, ts->emm_caid, ts->service_id, sec->section_data, sec->section_data_len));
+	}
 	ts_privsec_copy(ts->emm, ts->last_emm);
 	ts_privsec_clear(ts->emm);
 }
