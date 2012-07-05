@@ -147,8 +147,6 @@ void data_free(struct ts *ts) {
         if( ts->emm_filter)
             for( i=0; i<ts->emm_filter_blocks; i++)
                free( ts->emm_filter[i]);
-	ts->emm_filter_offset = 0;
-	ts->emm_filter_bytes = 0;
 	ts->emm_filter_blocks = 0;
 
 	pthread_attr_destroy(&ts->thread_attr);

@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
@@ -257,6 +258,7 @@ static int parse_io_param(struct io *io, char *opt, int open_flags, mode_t open_
 
 static void parse_options(struct ts *ts, int argc, char **argv) {
 	int k, j, i, ca_err = 0, server_err = 1, input_addr_err = 0, output_addr_err = 0, output_intf_err = 0, ident_err = 0, port_set = 0;
+	char *q;
 	while ((j = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
 		char *p = NULL;
 		switch (j) {
@@ -512,38 +514,57 @@ static void parse_options(struct ts *ts, int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 
 			case 'a': // EMM Filtering
-				j = 0;
-				i = sscanf( optarg, "%d", &ts->emm_filter_offset);
-				if( i==1 && ts->emm_filter_offset) {
-				    char *q = optarg;
-					//printf("%s %d %d\n", optarg, i, ts->emm_filter_offset);
-				    while( (q=strchr( q, ','))) {
-					q++;
-				        ts->emm_filter = realloc( ts->emm_filter, (j+1)*sizeof( char *));
-					//printf("%d %s\n", j, q);
-					ts->emm_filter[j] = malloc( strlen(q)/2);
-					k = 0;
-					while( *q && *q!=',') {
-					    int z;
-
-					    i = sscanf( q, "%02x", &z);
-					    if( i==1) {
-					        ts->emm_filter[j][k++] = z;
-					    }
-					    q+=2;
-					}
-					if( ts->emm_filter_bytes && ts->emm_filter_bytes!=k) {
-					    printf( "EMM Filtering erorr: filter lengths not the same\n");
-					    exit(!EXIT_SUCCESS);
+                q = optarg;
+                j = ts->emm_filter_blocks;
+                while( q) {
+                    int offset,bytes;
+                    
+                    i = sscanf( q, "%d", &offset);
+	                q = strchr( q, ',');
+                    if( q) {
+                        q++;
+    			        ts->emm_filter = realloc( ts->emm_filter, (j+1)*sizeof( char *));
+    					//printf("%d %s\n", j, q);
+	    				ts->emm_filter[j] = malloc( 128);
+	    				bytes = 0;
+	    				while( *q && *q!=',') {
+	    				    int z;
+	    				    if( isxdigit( *q) && isxdigit( q[1])) {
+    	    				    i = sscanf( q, "%02x", &z);
+	    				        ts->emm_filter[j][2+bytes++] = z;
+    	    				    if(bytes==126) {
+        	    				    printf( "EMM Filtering error: filter max length is 127 bytes\n");
+        	    				    exit(!EXIT_SUCCESS);
+    	    				    }
+	    				    }
+	    				    else {
+    	    				    printf( "EMM Filtering error: string contains non hex characters - '%s'\n", q);
+    	    				    exit(!EXIT_SUCCESS);
+	    				    }
+	    				    q+=2;
+	    				}
+//	    				if( ts->emm_filter_bytes && ts->emm_filter_bytes!=k) {
+//	    				    printf( "EMM Filtering erorr: filter lengths not the same\n");
+//	    				    exit(!EXIT_SUCCESS);
+//                      }
+//  					ts->emm_filter_bytes = k;
+                        ts->emm_filter[j][0] = offset;
+                        ts->emm_filter[j][1] = bytes;
+	     			    //printf( "EMM Filtering on : %d block, %d bytes\n", j+1, bytes);
+    					j++;
                     }
-					ts->emm_filter_bytes = k;
-				    //printf( "EMM Filtering on : %d block, %d bytes\n", j+1, k);
-					j++;
-				    }
-				    ts->emm_filter_blocks = j;
-				    printf( "EMM Filtering on : %d blocks, %d bytes, offset %d\n", ts->emm_filter_blocks,
-					ts->emm_filter_bytes, ts->emm_filter_offset);
-				}
+                    if( q)
+                        q++;
+                }
+			    ts->emm_filter_blocks = j;
+    		    printf( "EMM Filtering %s : Offs Size : Data\n", j ? "On ":"Off");
+    		    for( k=0; k<ts->emm_filter_blocks; k++) {
+    		        printf( "EMM Filter    %-3d : %4d %4d  : ", k+1, ts->emm_filter[k][0], ts->emm_filter[k][1]);
+    		        for( j=0; j<ts->emm_filter[k][1]; j++) {
+    		            printf( "%02x", ts->emm_filter[k][2+j]);
+    		        }
+    		        printf( "\n");
+    		    }
 				break;
 		}
 	}

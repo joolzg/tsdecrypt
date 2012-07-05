@@ -275,24 +275,25 @@ static void __process_emm(struct ts *ts, uint16_t pid, uint8_t *ts_packet) {
 	struct ts_header *th = &ts->emm->ts_header;
 	struct ts_section_header *sec = ts->emm->section_header;
 
-        // If we are not using filtering, we always send packets
-	match = 0;
-        if( ts->emm_filter) {
-            // Dont send packets unless we have found a filter match
-	    match = -1;
-            if( ts->emm_filter_bytes+ts->emm_filter_offset<sec->section_data_len) {
-            int i;
+    // If we are not using filtering, we always send packets
+    match = 0;
+    if( ts->emm_filter) {
+    int i;
 
-//		ts_LOGf("EMM | %d\n", ts->emm_filter_bytes);
-                for( i=0; i<ts->emm_filter_blocks; i++) {
-//		ts_LOGf("EMM | %d %02x-%02x %02x-%02x\n", i, sec->section_data[ ts->emm_filter_offset], ts->emm_filter[i][0],
-//			sec->section_data[ ts->emm_filter_offset+1], ts->emm_filter[i][1] );
-                    if( !memcmp( sec->section_data+ts->emm_filter_offset, ts->emm_filter[i], ts->emm_filter_bytes)) {
-                        match = i+1;
-                    }
+        // Dont send packets unless we have found a filter match
+        match = -1;
+
+//      ts_LOGf("EMM | %d\n", ts->emm_filter_bytes);
+        for( i=0; i<ts->emm_filter_blocks; i++) {
+//        ts_LOGf("EMM | %d %02x-%02x %02x-%02x\n", i, sec->section_data[ ts->emm_filter_offset], ts->emm_filter[i][0],
+//            sec->section_data[ ts->emm_filter_offset+1], ts->emm_filter[i][1] );
+            if( ts->emm_filter[i][0]+ts->emm_filter[i][1]<sec->section_data_len) {
+                if( !memcmp( sec->section_data+ts->emm_filter[i][0], &ts->emm_filter[i][1], ts->emm_filter[i][1])) {
+                    match = i+1;
                 }
             }
         }
+    }
 	if (ts->debug_level >= 2 || match>0) {
 		ts_hex_dump_buf(dump, dump_buf_sz, sec->section_data, min(dump_sz, sec->section_data_len), 0);
 		ts_LOGf("EMM | SID 0x%04x CAID: 0x%04x PID 0x%04x Table: 0x%02x Match: %s Length: %4d Data: %s..\n",
