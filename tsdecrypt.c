@@ -200,7 +200,7 @@ static void show_help(struct ts *ts) {
 	printf(" -f --emm-report-time <sec> | Report each <sec> seconds how much EMMs have been\n");
 	printf("                            .   received/processed. Set <sec> to 0 to disable\n");
 	printf("                            .   the reports. Default: %d sec\n", ts->emm_report_interval);
-	printf(" -a --emm-buffer-mask x,y,z | Enabled emm buffer filtering\n");
+	printf(" -a --emm-buffer-mask x,y,..| Enabled emm buffer filtering, x offset, y string\n");
 	printf("\n");
 	printf("ECM options:\n");
 	printf(" -X --ecm-pid <pid>         | Force ECM pid. Default: none\n");
