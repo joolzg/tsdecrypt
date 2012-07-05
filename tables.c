@@ -288,7 +288,7 @@ static void __process_emm(struct ts *ts, uint16_t pid, uint8_t *ts_packet) {
 //        ts_LOGf("EMM | %d %02x-%02x %02x-%02x\n", i, sec->section_data[ ts->emm_filter_offset], ts->emm_filter[i][0],
 //            sec->section_data[ ts->emm_filter_offset+1], ts->emm_filter[i][1] );
             if( ts->emm_filter[i][0]+ts->emm_filter[i][1]<sec->section_data_len) {
-                if( !memcmp( sec->section_data+ts->emm_filter[i][0], &ts->emm_filter[i][1], ts->emm_filter[i][1])) {
+                if( !memcmp( sec->section_data+ts->emm_filter[i][0], &ts->emm_filter[i][2], ts->emm_filter[i][1])) {
                     match = i+1;
                 }
             }
